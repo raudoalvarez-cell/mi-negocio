@@ -1,0 +1,64 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="Administra los ingresos, gastos, inversiones y ventas de tu negocio.">
+  <title>Mi Negocio</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Mi Negocio</h1>
+    <p>Tu negocio, bajo control.</p>
+  </header>
+
+  <main>
+    <section class="balance">
+      <p>Balance disponible</p>
+      <h2 id="balance">$0.00</h2>
+      <p id="fecha"></p>
+    </section>
+
+    <section class="resumen">
+      <article><span>Ingresos</span><strong id="ingresos">$0.00</strong></article>
+      <article><span>Gastos</span><strong id="gastos">$0.00</strong></article>
+      <article><span>Inversiones</span><strong id="inversiones">$0.00</strong></article>
+    </section>
+
+    <section class="panel">
+      <h2>Registrar movimiento</h2>
+      <form id="formulario">
+        <label for="tipo">Tipo de movimiento</label>
+        <select id="tipo" required>
+          <option value="ingreso">Ingreso</option>
+          <option value="gasto">Gasto</option>
+          <option value="inversion">Inversión</option>
+          <option value="venta">Venta</option>
+        </select>
+
+        <label for="descripcion">Descripción</label>
+        <input id="descripcion" maxlength="100" placeholder="Ej. Venta de productos" required>
+
+        <label for="monto">Monto en dólares (USD)</label>
+        <input id="monto" type="number" min="0.01" max="999999999" step="0.01" placeholder="0.00" required>
+
+        <button type="submit">Guardar movimiento</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Historial de movimientos</h2>
+      <button type="button" id="exportar" class="secundario">Exportar copia de seguridad</button>
+      <ul id="historial"></ul>
+    </section>
+  </main>
+
+  <footer>Mi Negocio · Administración sencilla</footer>
+  <script src="app.js"></script>
+</body>
+                                                </html>
+                                                
