@@ -1,0 +1,260 @@
+
+"use strict";
+
+const CLAVE = "mi-negocio-movimientos-v1";
+
+const formulario = document.getElementById("formulario");
+const tipo = document.getElementById("tipo");
+const descripcion = document.getElementById("descripcion");
+const monto = document.getElementById("monto");
+const balanceEl = document.getElementById("balance");
+const ingresosEl = document.getElementById("ingresos");
+const gastosEl = document.getElementById("gastos");
+const inversionesEl = document.getElementById("inversiones");
+const historialEl = document.getElementById("historial");
+const exportarBtn = document.getElementById("exportar");
+
+const dinero = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD"
+});
+
+const tiposValidos = [
+  "ingreso",
+  "gasto",
+  "inversion",
+  "venta"
+];
+
+function cargarMovimientos() {
+  try {
+    const guardados = localStorage.getItem(CLAVE);
+
+    if (guardados === null) {
+      return [];
+    }
+
+    const datos = JSON.parse(guardados);
+
+    if (!Array.isArray(datos)) {
+      throw new Error("Formato de datos incorrecto");
+    }
+
+    const validos = datos.every(m =>
+      m &&
+      typeof m.id === "string" &&
+      typeof m.descripcion === "string" &&
+      typeof m.monto === "number" &&
+      Number.isFinite(m.monto) &&
+      m.monto > 0 &&
+      tiposValidos.includes(m.tipo) &&
+      typeof m.fecha === "string"
+    );
+
+    if (!validos) {
+      throw new Error("Hay movimientos dañados");
+    }
+
+    return datos;
+  } catch (error) {
+    alert(
+      "No se pudieron leer los datos guardados. " +
+      "Por seguridad, no se modificarán los movimientos existentes. " +
+      "Comprueba el almacenamiento del navegador antes de continuar."
+    );
+
+    formulario.querySelector("button[type='submit']").disabled = true;
+    exportarBtn.disabled = true;
+
+    return null;
+  }
+}
+
+let movimientos = cargarMovimientos();
+const lecturaCorrecta = movimientos !== null;
+
+if (!lecturaCorrecta) {
+  movimientos = [];
+}
+
+function guardarMovimientos() {
+  try {
+    localStorage.setItem(CLAVE, JSON.stringify(movimientos));
+    return true;
+  } catch (error) {
+    alert(
+      "No se pudieron guardar los datos. " +
+      "Comprueba el espacio disponible en el dispositivo."
+    );
+    return false;
+  }
+}
+
+function fechaActual() {
+  return new Date().toLocaleDateString("es-PR", {
+    year: "numeric",
+    month: "short",
+    day: "numeric"
+  });
+}
+
+function actualizar() {
+  let ingresos = 0;
+  let gastos = 0;
+  let inversiones = 0;
+
+  movimientos.forEach(m => {
+    if (m.tipo === "ingreso" || m.tipo === "venta") {
+      ingresos += m.monto;
+    } else if (m.tipo === "gasto") {
+      gastos += m.monto;
+    } else if (m.tipo === "inversion") {
+      inversiones += m.monto;
+    }
+  });
+
+  ingresosEl.textContent = dinero.format(ingresos);
+  gastosEl.textContent = dinero.format(gastos);
+  inversionesEl.textContent = dinero.format(inversiones);
+
+  const balance = ingresos - gastos - inversiones;
+  balanceEl.textContent = dinero.format(balance);
+
+  historialEl.replaceChildren();
+
+  if (!lecturaCorrecta) {
+    const aviso = document.createElement("li");
+    aviso.className = "vacio";
+    aviso.textContent =
+      "No se puede mostrar el historial hasta revisar los datos guardados.";
+    historialEl.appendChild(aviso);
+    return;
+  }
+
+  if (movimientos.length === 0) {
+    const aviso = document.createElement("li");
+    aviso.className = "vacio";
+    aviso.textContent = "Todavía no hay movimientos registrados.";
+    historialEl.appendChild(aviso);
+    return;
+  }
+
+  [...movimientos].reverse().forEach(m => {
+    const li = document.createElement("li");
+    const fila = document.createElement("div");
+    fila.className = "movimiento";
+
+    const detalle = document.createElement("div");
+    const nombre = document.createElement("strong");
+    nombre.textContent = m.descripcion;
+
+    const meta = document.createElement("small");
+
+    const etiquetas = {
+      ingreso: "Ingreso",
+      gasto: "Gasto",
+      inversion: "Inversión",
+      venta: "Venta"
+    };
+
+    meta.textContent = etiquetas[m.tipo] + " · " + m.fecha;
+
+    const cantidad = document.createElement("strong");
+    const entrada = m.tipo === "ingreso" || m.tipo === "venta";
+
+    cantidad.className = entrada ? "positivo" : "negativo";
+    cantidad.textContent =
+      (entrada ? "+" : "−") + dinero.format(m.monto);
+
+    detalle.append(nombre, meta);
+    fila.append(detalle, cantidad);
+    li.appendChild(fila);
+    historialEl.appendChild(li);
+  });
+}
+
+formulario.addEventListener("submit", function(event) {
+  event.preventDefault();
+
+  if (!lecturaCorrecta) {
+    alert("No se pueden guardar movimientos hasta revisar los datos.");
+    return;
+  }
+
+  const nombre = descripcion.value.trim();
+  const importe = Number(monto.value);
+
+  if (
+    !nombre ||
+    !Number.isFinite(importe) ||
+    importe <= 0 ||
+    importe > 999999999 ||
+    !tiposValidos.includes(tipo.value)
+  ) {
+    alert("Escribe una descripción y un monto válido en dólares.");
+    return;
+  }
+
+  const movimiento = {
+    id: (
+      typeof crypto !== "undefined" && crypto.randomUUID
+    )
+      ? crypto.randomUUID()
+      : Date.now().toString() +
+        Math.random().toString(36).slice(2),
+
+    tipo: tipo.value,
+    descripcion: nombre,
+    monto: Math.round(importe * 100) / 100,
+    fecha: fechaActual()
+  };
+
+  movimientos.push(movimiento);
+
+  if (!guardarMovimientos()) {
+    movimientos.pop();
+    return;
+  }
+
+  formulario.reset();
+  actualizar();
+
+  alert("Movimiento guardado correctamente.");
+});
+
+exportarBtn.addEventListener("click", function() {
+  if (!lecturaCorrecta) {
+    alert("No se puede exportar hasta revisar los datos guardados.");
+    return;
+  }
+
+  const copia = {
+    aplicacion: "Mi Negocio",
+    version: 1,
+    exportado: new Date().toISOString(),
+    movimientos: movimientos
+  };
+
+  const archivo = new Blob(
+    [JSON.stringify(copia, null, 2)],
+    { type: "application/json;charset=utf-8" }
+  );
+
+  const url = URL.createObjectURL(archivo);
+  const enlace = document.createElement("a");
+
+  enlace.href = url;
+  enlace.download =
+    "mi-negocio-copia-" +
+    new Date().toISOString().slice(0, 10) +
+    ".json";
+
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+document.getElementById("fecha").textContent = fechaActual();
+actualizar();
